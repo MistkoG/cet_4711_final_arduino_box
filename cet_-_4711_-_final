@@ -1,0 +1,126 @@
+/* CET 4711 Final Project
+ *  Arduino Safety Box
+ *  Author: Alberto Garib
+ *  Due Date: 5/18/2022
+*/
+#include <Keypad.h>
+#include <Servo.h>
+#define lock_pin 12 //Pin 12
+#define alarm_pin 13 //Pin 13
+#define pass_lenght 6
+
+/*Create object */
+Servo lock;
+/* Button Pin*/
+const int button_pin = 3;
+/*Button variable status initialize at zero*/
+int bT = 0;
+ 
+ /* Symbols for the keypad */
+char keys[4][4] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
+
+ /*Specift Arduino Rows & Cols Pins*/
+byte rowPins[4] = {11, 10, 9, 8};
+byte colPins[4] = {7, 6, 5, 4};
+
+ /*Specift Arduino Rows & Cols Pins*/
+Keypad myKeypad = Keypad(makeKeymap(keys), rowPins, colPins, 4, 4);
+
+/*Create a variable to save the keypressed values "Correct Password" */
+char lock_pass[] = {'1', '1', '1', '1','1','1'};
+
+void setup() {
+  /*Set all LEDs as output */
+  DDRF = 0xff;
+  /*Set all LEDs HIGH */
+  PORTF = 0xff;
+  /*Set lock to defined pin */
+  lock.attach(lock_pin);
+  /*Lock initial position */
+  lock.write(45);
+  /*Set alarm as output on defined pin */
+  pinMode(alarm_pin, OUTPUT);
+
+  pinMode(button_pin, INPUT);
+}
+
+void loop() {
+
+  bT = digitalRead(button_pin);
+  
+  /*Save each character input into the array */ 
+  static char user_input[pass_lenght];
+  /*initialize user_ini from 0 */
+  static byte user_ini = 0;
+  /*Get user's input from keypad */
+  char keyPressed = myKeypad.getKey();
+  /* Turn all LEDs ON */
+  PORTF = 0;
+
+  /* Keep button pushed to enter password*/
+  while (bT == HIGH)
+  {
+  if (keyPressed) {
+    /*Add some beep to each pressed key */
+    key_pad_note(PB7, 329, 50);
+
+    /* Save user input characters*/
+    user_input[user_ini++] = keyPressed;
+
+    /*run loop if user stroke 6 keys*/
+    if (user_ini == 6) {
+      /*use boolean to check correct pass */
+      bool pass_saved = true;
+      /*if user's input not equal to correct pass bool is false */
+      for (int i = 0; i < 6; i++) {
+        if (user_input[i] != lock_pass[i])
+          pass_saved = false;
+      }
+      /*if loop for correct pass*/
+      if (pass_saved)
+      {
+        correct_pass(PE1, 140, 45);
+      }
+
+      /*Prom else loop for wrong pass */
+      else
+      {
+        wrong_pass(PE2, 13);       
+      }
+      /*Reset to 0 before restarting the loop */
+      user_ini = 0;      
+    }
+  }
+  break;
+}
+
+}
+void wrong_pass(int port_red_led, int alarm_pin_red_led)
+{  
+  PORTF = (port_red_led);
+  digitalWrite(alarm_pin, HIGH);
+  delay(1000);
+  digitalWrite(alarm_pin, LOW);  
+}
+
+void correct_pass(int port_green_led, int open_lock, int close_lock )
+{
+  PORTF = (port_green_led); //pin A0
+  /*Open lock */ 
+  lock.write(open_lock);
+  delay(1000);
+  /* Close lock */
+  lock.write(close_lock);
+}
+
+void key_pad_note(int alarm_p, int tone_sel, int tone_delay)
+{
+  digitalWrite(alarm_pin, HIGH);
+  delay(tone_delay);
+  digitalWrite(alarm_pin, LOW);
+}
